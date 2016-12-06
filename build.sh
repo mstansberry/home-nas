@@ -38,7 +38,7 @@ if [[ $name == "plex" || $name == "all" ]]; then
     --net=host \
     -e VERSION=latest \
     -v $base/plex/config:/config \
-    -v $media/transcode:/transcode \
+    -v $base/plex/transcode:/transcode \
     -v $media:/data \
     linuxserver/plex
 fi
@@ -88,7 +88,6 @@ if [[ $name == "hydra" || $name == "all" ]]; then
     linuxserver/hydra
 fi
 
-
 # Create jacket tcontainer
 if [[ $name == "jackett" || $name == "all" ]]; then
   docker run -d \
@@ -105,6 +104,7 @@ if [[ $name == "couchpotato" || $name == "all" ]]; then
     --restart=always \
     --name couchpotato \
     -h couchpotato \
+    --link media-vpn:deluge \
     -p 5050:5050 \
     -v $base/couchpotato/config:/config \
     -v $dl:/downloads \
