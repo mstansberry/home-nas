@@ -43,15 +43,14 @@ if [[ $name == "plex" || $name == "all" ]]; then
     linuxserver/plex
 fi
 
-# Create plexpy container
-if [[ $name == "plexpy" || $name == "all" ]]; then
+# Create mariadb container
+if [[ $name == "mariadb" || $name == "all" ]]; then
   docker run -d \
-  --name plexpy \
-    -h plexpy \
-    -p 8181:8181 \
-    -v $base/plexpy/config:/config \
-    -v $base/plex/config/Library/Application\ Support/Plex\ Media\ Server/Logs:/logs:ro \
-    linuxserver/plexpy
+  --name mariadb \
+    -h mariadb \
+    -p 3306:3306 \
+    -v $base/mariadb/config:/config \
+    linuxserver/mariadb
 fi
 
 # Create nzbget container
