@@ -22,9 +22,10 @@ if [[ $name == "media-vpn" || $name == "all" ]]; then
     -h media-vpn \
     --device=/dev/net/tun \
     --cap-add=NET_ADMIN \
+    -e PUID=500 -e PGID=100 \
+    -e FORCEVPN=true \
     -p 8112:8112 \
     -p 9117:9117 \
-    -e FORCEVPN=true \
     -v $base/media-vpn/config:/config \
     openvpn
 fi
@@ -36,22 +37,12 @@ if [[ $name == "plex" || $name == "all" ]]; then
     --name plex \
     -h plex \
     --net=host \
+    -e PUID=500 -e PGID=100 \
     -e VERSION=latest \
     -v $base/plex/config:/config \
     -v $media/transcode:/transcode \
     -v $media:/data \
     linuxserver/plex
-fi
-
-# Create plexpy container
-if [[ $name == "plexpy" || $name == "all" ]]; then
-  docker run -d \
-  --name plexpy \
-    -h plexpy \
-    -p 8181:8181 \
-    -v $base/plexpy/config:/config \
-    -v $base/plex/config/Library/Application\ Support/Plex\ Media\ Server/Logs:/logs:ro \
-    linuxserver/plexpy
 fi
 
 # Create nzbget container
@@ -60,6 +51,7 @@ if [[ $name == "nzbget" || $name == "all" ]]; then
     --restart=always \
     --name nzbget \
     -h nzbget \
+    -e PUID=500 -e PGID=100 \
     -p 6789:6789 \
     -v $base/nzbget/config:/config \
     -v $dl:/downloads \
@@ -72,9 +64,10 @@ if [[ $name == "deluge" || $name == "all" ]]; then
   docker run -d \
     --name deluge \
     --net=container:media-vpn \
+    -e PUID=500 -e PGID=100 \
     -v $dl:/downloads \
     -v $base/deluge/config:/config \
-    linuxserver/deluge
+    deluge
 fi
 
 # Create hydra container
@@ -83,17 +76,18 @@ if [[ $name == "hydra" || $name == "all" ]]; then
     --restart=always \
     --name hydra \
     -h hydra \
-    -v $base/hydra/config:/config \
+    -e PUID=500 -e PGID=100 \
     -p 5075:5075 \
+    -v $base/hydra/config:/config \
     linuxserver/hydra
 fi
-
 
 # Create jacket tcontainer
 if [[ $name == "jackett" || $name == "all" ]]; then
   docker run -d \
     --name jackett \
     --net=container:media-vpn \
+    -e PUID=500 -e PGID=100 \
     -v $base/jackett/config:/config \
     -v $dl:/downloads \
     linuxserver/jackett
@@ -105,6 +99,8 @@ if [[ $name == "couchpotato" || $name == "all" ]]; then
     --restart=always \
     --name couchpotato \
     -h couchpotato \
+    --link=media-vpn:deluge \
+    -e PUID=500 -e PGID=100 \
     -p 5050:5050 \
     -v $base/couchpotato/config:/config \
     -v $dl:/downloads \
@@ -118,6 +114,7 @@ if [[ $name == "sonarr" || $name == "all" ]]; then
     --restart=always \
     --name sonarr \
     -h sonarr \
+    -e PUID=500 -e PGID=100 \
     -p 8989:8989 \
     -v $base/sonarr/config:/config \
     -v $dl:/downloads \
@@ -131,6 +128,7 @@ if [[ $name == "muximux" || $name == "all" ]]; then
     --restart=always \
     --name muximux \
     -h muximux \
+    -e PUID=500 -e PGID=100 \
     -p 8081:80 \
     -v $base/muximux/config:/config \
     linuxserver/muximux
