@@ -1,5 +1,6 @@
 #! /bin/bash
 # Usage: backup.sh all
+# echo "0 30 3 * * * /share/Containers/backup.sh all" >> /etc/config/crontab && crontab /etc/config/crontab
 
 # Read input
 name="$1"

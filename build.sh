@@ -40,7 +40,7 @@ if [[ $name == "plex" || $name == "all" ]]; then
     -e PUID=500 -e PGID=100 \
     -e VERSION=latest \
     -v $base/plex/config:/config \
-    -v $media/transcode:/transcode \
+    -v $base/plex/transcode:/transcode \
     -v $media:/data \
     linuxserver/plex
 fi
@@ -101,6 +101,7 @@ if [[ $name == "couchpotato" || $name == "all" ]]; then
     -h couchpotato \
     --link=media-vpn:deluge \
     -e PUID=500 -e PGID=100 \
+    --link media-vpn:deluge \
     -p 5050:5050 \
     -v $base/couchpotato/config:/config \
     -v $dl:/downloads \
