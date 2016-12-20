@@ -13,7 +13,6 @@ media="/share/Multimedia"
 dl="/share/Download"
 
 # Create media-vpn container (openvpn)
-# built from http://github.com/linuxserver/docker-vpn
 # Ports: deluge=8112 jackett=9117
 if [[ $name == "media-vpn" || $name == "all" ]]; then
   docker run -d \
