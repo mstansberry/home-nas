@@ -1,20 +1,19 @@
 #! /bin/bash
-# Usage: restore.sh all
+# Usage: restore.sh passphrase all
 
 # Read input
-name="$1"
+gpg_key="$1"
+name="$2"
 if [[ $name == "" ]]; then
   name="all"
 fi
-
-gpg_key="$2"
 
 # Define base path for all containers
 base="/share/Containers"
 
 # Restore configs from backups
 if [[ $name == "all" ]]; then
-  for cont in $(ls $base/backup/*.gpg | cut -d/ -f5 | cut -d. -f1); do
+  for cont in $(ls $base/backup/*.gpg | rev | cut -d/ -f1 | rev | cut -d. -f1); do
     docker rm -f $cont
     if [ ! -d $base/$cont ]; then
       mkdir $base/$cont $base/$cont/config
@@ -27,8 +26,7 @@ else
   if [ ! -d $base/$name ]; then
     mkdir $base/$name $base/$name/config
   fi
-
-  if [ ! -f $base/backup/$name.tgz ]; then
+  if [ -f $base/backup/$name.tgz ]; then
     echo "$gpg_key" | gpg --passphrase-fd 0 --batch -d $base/backup/$name.tgz.gpg | tar zxv -C $base/$name/
   fi
   . $base/build.sh $name
