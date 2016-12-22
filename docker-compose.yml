@@ -1,0 +1,140 @@
+version: '2'
+services:
+  # web UI combining all services into single interface
+  muximux:
+    hostname: muximux
+    container_name: muximux
+    image: linuxserver/muximux
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 8081:80
+    volumes:
+      - ${base}/muximux/config:/config
+
+  # plex media server
+  plex:
+    hostname: plex
+    container_name: plex
+    image: linuxserver/plex
+    restart: always
+    network_mode: host
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - VERSION=latest
+    volumes:
+      - ${base}/plex/config:/config
+      - ${base}/plex/transcode:/transcode
+      - ${media}:/data
+
+  # usenet client/indexer
+  nzbget:
+    hostname: nzbget
+    container_name: nzbget
+    image: linuxserver/nzbget
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 6789:6789
+    volumes:
+      - ${base}/nzbget/config:/config
+      - ${dl}:/downloads
+      - ${media}:/media
+  hydra:
+    hostname: hydra
+    container_name: hydra
+    image: linuxserver/hydra
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 5075:5075
+    volumes:
+      - ${base}/hydra/config:/config
+
+  # bittorrent client/indexer running through anonymous VPN
+  # app container ports exposed via VPN container
+  # deluge=8112 jackett=9117
+  media-vpn:
+    hostname: media-vpn
+    container_name: media-vpn
+    image: openvpn
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    ports:
+      - 8112:8112
+      - 9117:9117
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - FORCEVPN=true
+    volumes:
+      - ${base}/media-vpn/config:/config
+  deluge:
+    hostname: deluge
+    container_name: deluge
+    image: linuxserver/deluge
+    restart: always
+    depends_on:
+      - media-vpn
+    network_mode: service:media-vpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${base}/deluge/config:/config
+      - ${dl}:/downloads
+  jackett:
+    hostname: jackett
+    container_name: jackett
+    image: linuxserver/jackett
+    restart: always
+    depends_on:
+      - media-vpn
+    network_mode: service:media-vpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${base}/jackett/config:/config
+
+  # media watchers/grabbers
+  couchpotato:
+    hostname: couchpotato
+    container_name: couchpotato
+    image: linuxserver/couchpotato
+    restart: always
+    links:
+      - media-vpn:deluge
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 5050:5050
+    volumes:
+      - ${base}/couchpotato/config:/config
+      - ${dl}:/downloads
+      - ${media}:/media
+  sonarr:
+    hostname: sonarr
+    container_name: sonarr
+    image: linuxserver/sonarr
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 8989:8989
+    volumes:
+      - ${base}/sonarr/config:/config
+      - ${dl}:/downloads
+      - ${media}/video/TV\ Shows:/tv
