@@ -9,7 +9,7 @@ if [[ $name == "" ]]; then
 fi
 
 # Define base path for all containers
-base="/share/Containers"
+source .env
 
 # Restore configs from backups
 if [[ $name == "all" ]]; then
@@ -20,7 +20,7 @@ if [[ $name == "all" ]]; then
     fi
     echo "$gpg_key" | gpg --passphrase-fd 0 --batch -d $base/backup/$cont.tgz.gpg | tar zxv -C $base/$cont/
   done
-  . $base/build.sh all
+  docker-compose up
 else
   docker rm -f $name
   if [ ! -d $base/$name ]; then
@@ -29,5 +29,5 @@ else
   if [ -f $base/backup/$name.tgz ]; then
     echo "$gpg_key" | gpg --passphrase-fd 0 --batch -d $base/backup/$name.tgz.gpg | tar zxv -C $base/$name/
   fi
-  . $base/build.sh $name
+  docker-compose up $name
 fi

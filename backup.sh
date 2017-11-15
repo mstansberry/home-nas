@@ -10,7 +10,7 @@ if [[ $name == "" ]]; then
 fi
 
 # Define base path for all containers
-base="/share/Containers"
+source .env
 
 # Export config dirs for containers
 if [ ! -d $base/backup ]; then
