@@ -24,7 +24,7 @@ if [[ ! $(cat $base/backup/media-vpn.log) == "" ]]; then
 fi
 
 if [[ $name == "all" ]]; then
-  for cont in $(ls -ld $base/* | grep "^d" | grep -v "backup\|station\|media-vpn\|Recycle" | awk '{print $9}' | cut -d/ -f4); do
+  for cont in $(ls -ld $base/* | grep "^d" | grep -v "backup\|station\|media-vpn\|Recycle" | awk '{print $8}' | cut -d/ -f4); do
     docker stop $cont
     cd $base/$cont
     chown -R media:everyone config/

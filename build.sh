@@ -7,12 +7,34 @@ if [[ $name == "" ]]; then
   name="all"
 fi
 
+if [[ $name == "all" ]]; then
+  docker ps -aq | xargs docker rm -f
+else
+  docker rm -f $name
+fi
+
 # Define base path for all
 source .env
+
+# Create plex container
+if [[ $name == "plex" || $name == "all" ]]; then
+  docker run -d \
+    --restart=always \
+    --name plex \
+    -h plex \
+    --net=host \
+    -e PUID=500 -e PGID=100 \
+    -e VERSION=latest \
+    -v $base/plex/config:/config \
+    -v $base/plex/transcode:/transcode \
+    -v $media:/data \
+    linuxserver/plex
+fi
 
 # Create media-vpn container (openvpn)
 # Ports: hydra=5075 radarr=7878 deluge=8112 sonarr=8989
 if [[ $name == "media-vpn" || $name == "all" ]]; then
+  docker load -i $base/openvpn.image
   docker run -d \
     --restart=always \
     --name=media-vpn \
@@ -31,12 +53,13 @@ fi
 
 # Create mariadb container for kodi db
 if [[ $name == "mariadb" || $name == "all" ]]; then
+  docker pull linuxserver/mariadb:latest
   docker run -d \
     --restart=always \
     --name mariadb \
     -h mariadb \
     -e PUID=$PUID -e PGID=$PGID \
-    -e MYSQL_ROOT_PASSWORD=####### \
+    -e MYSQL_ROOT_PASSWORD=a707b45 \
     -p 3306:3306 \
     -v $base/mariadb/config:/config \
     linuxserver/mariadb:latest
@@ -44,6 +67,7 @@ fi
 
 # Create nzbget container for usenet download
 if [[ $name == "nzbget" || $name == "all" ]]; then
+  docker pull linuxserver/nzbget:latest
   docker run -d \
     --restart=always \
     --name nzbget \
@@ -58,6 +82,7 @@ fi
 
 # Create deluge container for torrent download
 if [[ $name == "deluge" || $name == "all" ]]; then
+  docker pull linuxserver/deluge:latest
   docker run -d \
     --name deluge \
     --net=container:media-vpn \
@@ -69,6 +94,7 @@ fi
 
 # Create hydra container for usenet lookup
 if [[ $name == "hydra" || $name == "all" ]]; then
+  docker pull linuxserver/hydra:latest
   docker run -d \
     --restart=always \
     --name hydra \
@@ -80,6 +106,7 @@ fi
 
 # Create radarr container for movie tracking
 if [[ $name == "radarr" || $name == "all" ]]; then
+  docker pull linuxserver/radarr:latest
   docker run -d \
     --restart=always \
     --name radarr \
@@ -93,6 +120,7 @@ fi
 
 # Create sonarr container for tv show tracking
 if [[ $name == "sonarr" || $name == "all" ]]; then
+  docker pull linuxserver/sonarr:latest
   docker run -d \
     --restart=always \
     --name sonarr \
@@ -106,6 +134,7 @@ fi
 
 # Create muximux container for unified interface
 if [[ $name == "muximux" || $name == "all" ]]; then
+  docker pull linuxserver/muximux:latest
   docker run -d \
     --restart=always \
     --name muximux \
@@ -118,11 +147,13 @@ fi
 
 # Create ubiquiti container for network mgmt
 if [[ $name == "unifi" || $name == "all" ]]; then
+  docker pull linuxserver/unifi:latest
   docker run -d \
     --restart=always \
     --name unifi \
     -h unifi \
     -e PUID=$PUID -e PGID=$PGID \
+    -p 3478:3478 \
     -p 8090:8080 \
     -p 8091:8081 \
     -p 8443:8443 \
@@ -130,17 +161,4 @@ if [[ $name == "unifi" || $name == "all" ]]; then
     -p 8880:8880 \
     -v $base/unifi/config:/config \
     linuxserver/unifi:latest
-fi
-
-# Create nextcloud container for home cloud
-if [[ $name == "nextcloud" || $name == "all" ]]; then
-  docker run -d \
-    --restart=always \
-    --name nextcloud \
-    -h nextcloud \
-    -p 8082:80 \
-    -v $base/nextcloud/apps:/var/www/html/apps \
-    -v $base/nextcloud/config:/var/www/html/config \
-    -v /share/home_cloud:/var/www/html/data \
-    nextcloud:latest
 fi
