@@ -1,46 +1,79 @@
-version: '2'
+---
+version: '3'
 services:
-  # web UI combining all services into single interface
-  muximux:
-    hostname: muximux
-    container_name: muximux
-    image: linuxserver/muximux
+  # plex media server
+  plex:
+    image: linuxserver/plex
+    container_name: plex
+    hostname: plex
     restart: always
+    network_mode: host
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-    ports:
-      - 8081:80
+      - VERSION=latest
     volumes:
-      - ${base}/muximux/config:/config
-
-  # bittorrent client/indexer running through anonymous VPN
-  # app container ports exposed via VPN container
-  # hydra=5075 radarr=7878 deluge=8112 sonarr=8989
+      - $base/plex/config:/config
+      - $base/plex/transcode:/transcode
+      - $media:/data
+  # media-vpn container (openvpn)
+  # ports: hydra=5075 radarr=7878 deluge=8112 lidarr=8686 sonarr=8989
   media-vpn:
-    hostname: media-vpn
-    container_name: media-vpn
     image: openvpn
+    container_name: media-vpn
+    hostname: media-vpn
     restart: always
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun
+    network_mode: bridge
     ports:
-      - 5075:5075
-      - 7878:7878
-      - 8112:8112
-      - 8989:8989
+      - "5075:5075"
+      - "7878:7878"
+      - "8112:8112"
+      - "8686:8686"
+      - "8989:8989"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - FORCEVPN=true
     volumes:
       - ${base}/media-vpn/config:/config
-
+  # mariadb container for kodi db
+  mariadb:
+    image: linuxserver/mariadb:latest
+    container_name: mariadb
+    hostname: mariadb
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - MYSQL_ROOT_PASSWORD=a707b45
+    network_mode: bridge
+    ports:
+      - "3306:3306"
+    volumes:
+      - $base/mariadb/config:/config
+  # usenet client
+  nzbget:
+    image: linuxserver/nzbget
+    container_name: nzbget
+    hostname: nzbget
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    network_mode: bridge
+    ports:
+      - "6789:6789"
+    volumes:
+      - ${base}/nzbget/config:/config
+      - ${dl}:/downloads
+      - ${media}:/media
+  # bittorrent client
   deluge:
-    container_name: deluge
     image: linuxserver/deluge
+    container_name: deluge
     restart: always
     network_mode: service:media-vpn
     depends_on:
@@ -51,26 +84,10 @@ services:
     volumes:
       - ${base}/deluge/config:/config
       - ${dl}:/downloads
-
-  # usenet client/indexer
-  nzbget:
-    hostname: nzbget
-    container_name: nzbget
-    image: linuxserver/nzbget
-    restart: always
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-    ports:
-      - 6789:6789
-    volumes:
-      - ${base}/nzbget/config:/config
-      - ${dl}:/downloads
-      - ${media}:/media
-
+  # nzb indexer
   hydra:
-    container_name: hydra
     image: linuxserver/hydra
+    container_name: hydra
     restart: always
     depends_on:
       - media-vpn
@@ -81,17 +98,34 @@ services:
       - PGID=${PGID}
     volumes:
       - ${base}/hydra/config:/config
-
-  # media watchers/grabbers
-  radarr:
-    container_name: radarr
-    image: linuxserver/radarr
+  # movie watcher/grabber
+  lidarr:
+    image: linuxserver/lidarr
+    container_name: lidarr
     restart: always
     depends_on:
+      - deluge
+      - hydra
       - media-vpn
       - nzbget
-      - hydra
+    network_mode: service:media-vpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${base}/lidarr/config:/config
+      - ${dl}:/downloads
+      - ${media}/music:/music
+  # movie watcher/grabber
+  radarr:
+    image: linuxserver/radarr
+    container_name: radarr
+    restart: always
+    depends_on:
       - deluge
+      - hydra
+      - media-vpn
+      - nzbget
     network_mode: service:media-vpn
     environment:
       - PUID=${PUID}
@@ -100,16 +134,16 @@ services:
       - ${base}/radarr/config:/config
       - ${dl}:/downloads
       - ${media}/video/Movies:/movies
-
+  # tv show watcher/grabber
   sonarr:
-    container_name: sonarr
     image: linuxserver/sonarr
+    container_name: sonarr
     restart: always
     depends_on:
+      - deluge
+      - hydra
       - media-vpn
       - nzbget
-      - hydra
-      - deluge
     network_mode: service:media-vpn
     environment:
       - PUID=${PUID}
@@ -118,6 +152,51 @@ services:
       - ${base}/sonarr/config:/config
       - ${dl}:/downloads
       - ${media}/video/TV\ Shows:/tv
-
-networks:
-  default:
+  # web UI combining all services into single interface
+  muximux:
+    image: linuxserver/muximux
+    container_name: muximux
+    hostname: muximux
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    network_mode: bridge
+    ports:
+      - "8081:80"
+    volumes:
+      - ${base}/muximux/config:/config
+  organizr:
+    image: lsiocommunity/organizr
+    container_name: organizr
+    hostname: organizr
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    network_mode: bridge
+    ports:
+      - "8082:80"
+    volumes:
+      - ${base}/organizr/config:/config
+  # ubiquiti networks unifi manager
+  unifi:
+    image: linuxserver/unifi:latest
+    container_name: unifi
+    hostname: unifi
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    network_mode: bridge
+    ports:
+      - "3478:3478/udp"
+      - "6789:6789"
+      - "8090:8080"
+      - "8091:8081"
+      - "8443:8443"
+      - "8843:8843"
+      - "8880:8880"
+      - "10001:10001/udp"
+    volumes:
+      - $base/unifi/config:/config

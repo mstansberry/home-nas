@@ -5,5 +5,5 @@
 host_ip=$(wget http://ipinfo.io/ip -qO -)
 cont_ip=$(docker exec media-vpn wget http://ipinfo.io/ip -qO -)
 if [[ $host_ip == $cont_ip ]]; then
-  docker restart media-vpn deluge jackett
+  docker-compose restart media-vpn
 fi

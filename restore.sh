@@ -20,7 +20,7 @@ if [[ $name == "all" ]]; then
     fi
     echo "$gpg_key" | gpg --passphrase-fd 0 --batch -d $base/backup/$cont.tgz.gpg | tar zxv -C $base/$cont/
   done
-  docker-compose up
+  docker-compose up -d
 else
   docker rm -f $name
   if [ ! -d $base/$name ]; then
@@ -29,5 +29,5 @@ else
   if [ -f $base/backup/$name.tgz ]; then
     echo "$gpg_key" | gpg --passphrase-fd 0 --batch -d $base/backup/$name.tgz.gpg | tar zxv -C $base/$name/
   fi
-  docker-compose up $name
+  docker-compose up -d $name
 fi

@@ -25,21 +25,21 @@ fi
 
 if [[ $name == "all" ]]; then
   for cont in $(ls -ld $base/* | grep "^d" | grep -v "backup\|station\|media-vpn\|Recycle" | awk '{print $8}' | cut -d/ -f4); do
-    docker stop $cont
+    docker-compose down $cont
     cd $base/$cont
     chown -R media:everyone config/
     tar uvpf $base/backup/$cont.tar config/ &> $base/backup/$cont.log
-    docker start $cont
+    docker-compose up -d $cont
     if [[ ! $(cat $base/backup/$cont.log) == "" ]]; then
       cat $base/backup/$cont.tar | gpg --passphrase "$gpg_key" --symmetric --cipher-algo aes256 --compression-algo BZIP2 --batch --yes -o $base/backup/output/$cont.tgz.gpg
     fi
   done
 else
-  docker stop $name
+  docker-compose down $name
   cd $base/$name
   chown -R media:everyone config/
   tar uvpf $base/backup/$name.tar config/ &> $base/backup/$name.log
-  docker start $name
+  docker-compose up -d $name
   if [[ ! $(cat $base/backup/$name.log) == "" ]]; then
     cat $base/backup/$name.tar | gpg --passphrase "$gpg_key" --symmetric --cipher-algo aes256 --compression-algo BZIP2 --batch --yes -o $base/backup/output/$name.tgz.gpg
   fi
