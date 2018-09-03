@@ -2,22 +2,22 @@
 version: '3'
 services:
   # plex media server
-  plex:
-    image: linuxserver/plex
-    container_name: plex
-    hostname: plex
-    restart: always
-    network_mode: host
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - VERSION=latest
-    volumes:
-      - $base/plex/config:/config
-      - $base/plex/transcode:/transcode
-      - $media:/data
+#  plex:
+#    image: linuxserver/plex
+#    container_name: plex
+#    hostname: plex
+#    restart: always
+#    network_mode: host
+#    environment:
+#      - PUID=${PUID}
+#      - PGID=${PGID}
+#      - VERSION=latest
+#   volumes:
+#     - $base/plex/config:/config
+#     - $base/plex/transcode:/transcode
+#     - $media:/data
   # media-vpn container (openvpn)
-  # ports: hydra=5075 radarr=7878 deluge=8112 lidarr=8686 sonarr=8989
+  # ports: hydra=5075 lazylibrarian=5299 radarr=7878 deluge=8112 lidarr=8686 sonarr=8989 jackett=9117
   media-vpn:
     image: openvpn
     container_name: media-vpn
@@ -29,11 +29,14 @@ services:
       - /dev/net/tun
     network_mode: bridge
     ports:
+      - "5060:5060"
       - "5075:5075"
+      - "5299:5299"
       - "7878:7878"
       - "8112:8112"
       - "8686:8686"
       - "8989:8989"
+      - "9117:9117"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -98,7 +101,41 @@ services:
       - PGID=${PGID}
     volumes:
       - ${base}/hydra/config:/config
-  # movie watcher/grabber
+  # bittorrent search aggregator
+  jackett:
+    image: linuxserver/jackett
+    container_name: jackett
+    restart: always
+    depends_on:
+      - media-vpn
+      - nzbget
+    network_mode: service:media-vpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${base}/jackett/config:/config
+      - /etc/localtime:/etc/localtime:ro
+  # ebook watcher/downloader
+  lazylibrarian:
+    image: thraxis/lazylibrarian-calibre
+    container_name: lazylibrarian
+    restart: always
+    depends_on:
+      - deluge
+      - hydra
+      - jackett
+      - media-vpn
+      - nzbget
+    network_mode: service:media-vpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - ${base}/lazylibrarian/config:/config
+      - ${dl}/completed:/downloads
+      - ${media}/ebooks:/books
+  # music watcher/grabber
   lidarr:
     image: linuxserver/lidarr
     container_name: lidarr
@@ -106,6 +143,7 @@ services:
     depends_on:
       - deluge
       - hydra
+      - jackett
       - media-vpn
       - nzbget
     network_mode: service:media-vpn
@@ -115,6 +153,7 @@ services:
     volumes:
       - ${base}/lidarr/config:/config
       - ${dl}:/downloads
+      - ${media}:/media
       - ${media}/music:/music
   # movie watcher/grabber
   radarr:
@@ -124,6 +163,7 @@ services:
     depends_on:
       - deluge
       - hydra
+      - jackett
       - media-vpn
       - nzbget
     network_mode: service:media-vpn
@@ -133,6 +173,7 @@ services:
     volumes:
       - ${base}/radarr/config:/config
       - ${dl}:/downloads
+      - ${media}:/media
       - ${media}/video/Movies:/movies
   # tv show watcher/grabber
   sonarr:
@@ -142,6 +183,7 @@ services:
     depends_on:
       - deluge
       - hydra
+      - jackett
       - media-vpn
       - nzbget
     network_mode: service:media-vpn
@@ -151,7 +193,8 @@ services:
     volumes:
       - ${base}/sonarr/config:/config
       - ${dl}:/downloads
-      - ${media}/video/TV\ Shows:/tv
+      - ${media}:/media
+      - ${media}/video/TV Shows:/tv
   # web UI combining all services into single interface
   muximux:
     image: linuxserver/muximux
@@ -166,20 +209,22 @@ services:
       - "8081:80"
     volumes:
       - ${base}/muximux/config:/config
-  organizr:
-    image: lsiocommunity/organizr
-    container_name: organizr
-    hostname: organizr
+  # syncthing file sync agent
+  syncthing:
+    image: linuxserver/syncthing
+    container_name: syncthing
+    hostname: syncthing
     restart: always
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
-    network_mode: bridge
     ports:
-      - "8082:80"
+      - "8384:8384"
+      - "22000:22000"
+      - "21027:21027/udp"
     volumes:
-      - ${base}/organizr/config:/config
-  # ubiquiti networks unifi manager
+      - $base/syncthing/config:/config
+      - $sync:/data
   unifi:
     image: linuxserver/unifi:latest
     container_name: unifi
@@ -191,7 +236,6 @@ services:
     network_mode: bridge
     ports:
       - "3478:3478/udp"
-      - "6789:6789"
       - "8090:8080"
       - "8091:8081"
       - "8443:8443"

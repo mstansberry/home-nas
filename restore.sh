@@ -9,20 +9,25 @@ if [[ $name == "" ]]; then
 fi
 
 # Define base path for all containers
-source .env
+set -o allexport
+source /share/Container/.env
+set +o allexport
 
+cd $base/$cont
 # Restore configs from backups
 if [[ $name == "all" ]]; then
   for cont in $(ls $base/backup/*.gpg | rev | cut -d/ -f1 | rev | cut -d. -f1); do
-    docker rm -f $cont
+    docker-compose pull $cont
+    docker-compose stop $cont
     if [ ! -d $base/$cont ]; then
       mkdir $base/$cont $base/$cont/config
     fi
     echo "$gpg_key" | gpg --passphrase-fd 0 --batch -d $base/backup/$cont.tgz.gpg | tar zxv -C $base/$cont/
+  docker-compose up -d $cont
   done
-  docker-compose up -d
 else
-  docker rm -f $name
+  docker-compose pull $name
+  docker-compose stop $name
   if [ ! -d $base/$name ]; then
     mkdir $base/$name $base/$name/config
   fi

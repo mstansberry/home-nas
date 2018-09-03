@@ -10,7 +10,9 @@ if [[ $name == "" ]]; then
 fi
 
 # Define base path for all containers
-source .env
+set -o allexport
+source /share/Container/.env
+set +o allexport
 
 # Export config dirs for containers
 if [ ! -d $base/backup ]; then
@@ -22,10 +24,12 @@ tar uvpf $base/backup/media-vpn.tar config/ &> $base/backup/media-vpn.log
 if [[ ! $(cat $base/backup/media-vpn.log) == "" ]]; then
   cat $base/backup/media-vpn.tar | gpg --passphrase "$gpg_key" --symmetric --cipher-algo aes256 --compression-algo BZIP2 --batch --yes -o $base/backup/output/media-vpn.tgz.gpg
 fi
+rm -f $base/backup/media-vpn.log
 
 if [[ $name == "all" ]]; then
   for cont in $(ls -ld $base/* | grep "^d" | grep -v "backup\|station\|media-vpn\|Recycle" | awk '{print $8}' | cut -d/ -f4); do
-    docker-compose down $cont
+    docker-compose pull $cont
+    docker-compose stop $cont
     cd $base/$cont
     chown -R media:everyone config/
     tar uvpf $base/backup/$cont.tar config/ &> $base/backup/$cont.log
@@ -33,9 +37,11 @@ if [[ $name == "all" ]]; then
     if [[ ! $(cat $base/backup/$cont.log) == "" ]]; then
       cat $base/backup/$cont.tar | gpg --passphrase "$gpg_key" --symmetric --cipher-algo aes256 --compression-algo BZIP2 --batch --yes -o $base/backup/output/$cont.tgz.gpg
     fi
+    rm -f $base/backup/$cont.log
   done
 else
-  docker-compose down $name
+  docker-compose pull $name
+  docker-compose stop $name
   cd $base/$name
   chown -R media:everyone config/
   tar uvpf $base/backup/$name.tar config/ &> $base/backup/$name.log
@@ -43,6 +49,7 @@ else
   if [[ ! $(cat $base/backup/$name.log) == "" ]]; then
     cat $base/backup/$name.tar | gpg --passphrase "$gpg_key" --symmetric --cipher-algo aes256 --compression-algo BZIP2 --batch --yes -o $base/backup/output/$name.tgz.gpg
   fi
+  rm -f $base/backup/$name.log
 fi
 
-rm -f $base/backup/*.log
+docker image prune -f
